@@ -124,6 +124,14 @@ export default function GeneratorPage() {
     }
   }, []);
 
+  useEffect(() => {
+    if (status === "done") {
+      setStatus("idle");
+      setDownloadUrl(null);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedType, duration, bandwidth, modulation]);
+
   const generate = async () => {
     if (!savedFreq) return;
     setStatus("generating");
