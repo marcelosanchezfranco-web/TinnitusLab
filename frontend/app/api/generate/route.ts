@@ -12,8 +12,9 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(300_000), // 5 minutos
     });
-  } catch {
-    return NextResponse.json({ detail: "No se pudo conectar al servidor de audio" }, { status: 502 });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ detail: `Error de conexión: ${msg} | URL: ${backendUrl}` }, { status: 502 });
   }
 
   if (!response.ok) {
