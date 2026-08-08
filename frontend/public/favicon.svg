@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="12" fill="#080810"/>
+  <!-- Sound wave lines -->
+  <line x1="10" y1="32" x2="54" y2="32" stroke="#1a1a2e" stroke-width="1.5"/>
+  <!-- Wave path -->
+  <path d="M 8 32 Q 14 16 20 32 Q 26 48 32 32 Q 38 16 44 32 Q 50 48 56 32"
+        fill="none" stroke="#00ffcc" stroke-width="2.5" stroke-linecap="round"
+        style="filter: drop-shadow(0 0 4px #00ffcc)"/>
+  <!-- Notch indicator -->
+  <circle cx="32" cy="32" r="4" fill="#ff6b9d" style="filter: drop-shadow(0 0 4px #ff6b9d)"/>
+</svg>
