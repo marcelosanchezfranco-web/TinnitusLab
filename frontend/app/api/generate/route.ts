@@ -10,6 +10,7 @@ export async function POST(request: NextRequest) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
+      signal: AbortSignal.timeout(300_000), // 5 minutos
     });
   } catch {
     return NextResponse.json({ detail: "No se pudo conectar al servidor de audio" }, { status: 502 });
