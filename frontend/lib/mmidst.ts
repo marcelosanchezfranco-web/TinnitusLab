@@ -46,6 +46,65 @@ function rampCurve(rising: boolean): Float32Array {
   return c;
 }
 
+function toneAmplitude(ratioDb: number): number {
+  return Math.SQRT2 * 10 ** ((REF_RMS_DB + ratioDb) / 20);
+}
+
+function newContext(): AudioContext {
+  try {
+    return new AudioContext({ sampleRate: 48000 });
+  } catch {
+    return new AudioContext();
+  }
+}
+
+function scheduleToneNode(
+  ctx: AudioContext,
+  dest: AudioNode,
+  freq: number,
+  t: number,
+  rise: Float32Array,
+  fall: Float32Array
+) {
+  const osc = ctx.createOscillator();
+  osc.type = "sine";
+  osc.frequency.value = freq;
+  const env = ctx.createGain();
+  env.gain.value = 0;
+  env.gain.setValueCurveAtTime(rise, t, RAMP_S);
+  env.gain.setValueCurveAtTime(fall, t + TONE_S - RAMP_S, RAMP_S);
+  osc.connect(env).connect(dest);
+  osc.start(t);
+  osc.stop(t + TONE_S + 0.02);
+}
+
+export class ToneTester {
+  private ctx: AudioContext | null = null;
+  private rise = rampCurve(true);
+  private fall = rampCurve(false);
+
+  async play(freq: number, volume: number, ratioDb: number) {
+    if (!this.ctx) this.ctx = newContext();
+    const ctx = this.ctx;
+    await ctx.resume();
+    const master = ctx.createGain();
+    master.gain.value = volume * volume;
+    master.connect(ctx.destination);
+    const bus = ctx.createGain();
+    bus.gain.value = toneAmplitude(ratioDb);
+    bus.connect(master);
+    const t0 = ctx.currentTime + 0.05;
+    for (let i = 0; i < 3; i++) {
+      scheduleToneNode(ctx, bus, freq, t0 + i * 0.5, this.rise, this.fall);
+    }
+  }
+
+  close() {
+    this.ctx?.close().catch(() => {});
+    this.ctx = null;
+  }
+}
+
 export type StartOptions = {
   ft: number;
   playlist: Track[];
@@ -71,12 +130,7 @@ export class MmidstPlayer {
 
   async start(o: StartOptions) {
     this.stop();
-    let ctx: AudioContext;
-    try {
-      ctx = new AudioContext({ sampleRate: 48000 });
-    } catch {
-      ctx = new AudioContext();
-    }
+    const ctx = newContext();
     this.ctx = ctx;
     this.freqs = mmidstFrequencies(o.ft);
     this.playlist = o.playlist;
@@ -143,17 +197,7 @@ export class MmidstPlayer {
   }
 
   private scheduleTone(freq: number, t: number) {
-    const ctx = this.ctx!;
-    const osc = ctx.createOscillator();
-    osc.type = "sine";
-    osc.frequency.value = freq;
-    const env = ctx.createGain();
-    env.gain.value = 0;
-    env.gain.setValueCurveAtTime(this.rise, t, RAMP_S);
-    env.gain.setValueCurveAtTime(this.fall, t + TONE_S - RAMP_S, RAMP_S);
-    osc.connect(env).connect(this.toneBus!);
-    osc.start(t);
-    osc.stop(t + TONE_S + 0.02);
+    scheduleToneNode(this.ctx!, this.toneBus!, freq, t, this.rise, this.fall);
   }
 
   setVolume(v: number) {
@@ -162,8 +206,7 @@ export class MmidstPlayer {
 
   setRatioDb(db: number) {
     if (!this.toneBus || !this.ctx) return;
-    const amp = Math.SQRT2 * 10 ** ((REF_RMS_DB + db) / 20);
-    this.toneBus.gain.setTargetAtTime(amp, this.ctx.currentTime, 0.05);
+    this.toneBus.gain.setTargetAtTime(toneAmplitude(db), this.ctx.currentTime, 0.05);
   }
 
   getElapsed(): number {

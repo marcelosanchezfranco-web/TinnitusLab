@@ -6,6 +6,7 @@ import {
   FT_MAX,
   FT_MIN,
   MmidstPlayer,
+  ToneTester,
   mmidstFrequencies,
   type Track,
 } from "@/lib/mmidst";
@@ -40,7 +41,10 @@ export default function ExperimentalPage() {
   const [elapsed, setElapsed] = useState(0);
   const [current, setCurrent] = useState<Track | null>(null);
   const [error, setError] = useState("");
+  const [testOpen, setTestOpen] = useState(false);
+  const [heard, setHeard] = useState<Record<number, boolean>>({});
   const player = useRef<MmidstPlayer | null>(null);
+  const tester = useRef<ToneTester | null>(null);
 
   useEffect(() => {
     const f = localStorage.getItem("tinnitus_frequency");
@@ -49,8 +53,16 @@ export default function ExperimentalPage() {
       .then((r) => r.json())
       .then(setTracks)
       .catch(() => setError("No se pudo cargar la lista de música"));
-    return () => player.current?.stop();
+    return () => {
+      player.current?.stop();
+      tester.current?.close();
+    };
   }, []);
+
+  const playTestTone = (i: number) => {
+    if (!tester.current) tester.current = new ToneTester();
+    tester.current.play(freqs[i], volume, ratioDb).catch(() => setError("No se pudo reproducir el tono de prueba"));
+  };
 
   useEffect(() => {
     if (status !== "playing") return;
@@ -269,6 +281,92 @@ export default function ExperimentalPage() {
           </p>
         </div>
       </div>
+
+      {inRange && (
+        <div className="glass-card rounded-xl p-5 mb-6" style={{ border: "1px solid #1a1a2e" }}>
+          <button
+            onClick={() => setTestOpen((o) => !o)}
+            disabled={running}
+            className="w-full flex justify-between items-center text-sm font-semibold"
+            style={{ color: running ? "#6060a0" : "#e0e0ff" }}
+          >
+            <span>🔎 Prueba de audibilidad de los 4 tonos</span>
+            <span>{testOpen && !running ? "▲" : "▼"}</span>
+          </button>
+          {running && (
+            <p className="text-xs mt-2" style={{ color: "#6060a0" }}>
+              Detén la sesión para hacer la prueba.
+            </p>
+          )}
+          {testOpen && !running && (
+            <div className="mt-4">
+              <p className="text-xs mb-4" style={{ color: "#6060a0" }}>
+                Cada tono suena 3 veces seguidas, con el volumen y la mezcla que tienes configurados arriba. Empieza con el volumen bajo y súbelo despacio, sin llegar a
+                un nivel incómodo.
+              </p>
+              <div className="space-y-2">
+                {freqs.map((f, i) => (
+                  <div key={i} className="flex flex-wrap items-center gap-2">
+                    <span className="font-mono text-sm w-24" style={{ color: "#e0e0ff" }}>
+                      {Math.round(f)} Hz
+                    </span>
+                    <button
+                      onClick={() => playTestTone(i)}
+                      className="px-3 py-1.5 rounded-lg text-sm"
+                      style={{ backgroundColor: "#7b6ef615", border: "1px solid #7b6ef660", color: "#7b6ef6" }}
+                    >
+                      ▶ Reproducir
+                    </button>
+                    <button
+                      onClick={() => setHeard((h) => ({ ...h, [i]: true }))}
+                      className="px-3 py-1.5 rounded-lg text-sm"
+                      style={{
+                        backgroundColor: heard[i] === true ? "#00ffcc20" : "#0f0f1a",
+                        border: `1px solid ${heard[i] === true ? "#00ffcc" : "#1a1a2e"}`,
+                        color: heard[i] === true ? "#00ffcc" : "#a0a0c0",
+                      }}
+                    >
+                      Lo oigo
+                    </button>
+                    <button
+                      onClick={() => setHeard((h) => ({ ...h, [i]: false }))}
+                      className="px-3 py-1.5 rounded-lg text-sm"
+                      style={{
+                        backgroundColor: heard[i] === false ? "#ff6b9d20" : "#0f0f1a",
+                        border: `1px solid ${heard[i] === false ? "#ff6b9d" : "#1a1a2e"}`,
+                        color: heard[i] === false ? "#ff6b9d" : "#a0a0c0",
+                      }}
+                    >
+                      No lo oigo
+                    </button>
+                  </div>
+                ))}
+              </div>
+              {Object.keys(heard).length === freqs.length && (
+                <div className="mt-4 text-sm p-3 rounded-lg" style={{ backgroundColor: "#0f0f1a", border: "1px solid #1a1a2e", color: "#a0a0c0" }}>
+                  {freqs.every((_, i) => heard[i]) ? (
+                    <>Oyes los 4 tonos con este nivel.</>
+                  ) : (
+                    <>
+                      <strong style={{ color: "#ff6b9d" }}>
+                        No oyes: {freqs.filter((_, i) => heard[i] === false).map((f) => `${Math.round(f)} Hz`).join(", ")}.
+                      </strong>{" "}
+                      Prueba subir un poco &quot;Tonos frente a música&quot; o el volumen y repite, sin llegar a un nivel incómodo. Si no se oye a un nivel cómodo, ese tono
+                      probablemente cae en una zona con pérdida auditiva o fuera de la respuesta de tus audífonos. Prueba con otros audífonos y consulta con un audiólogo:
+                      el estudio no indica qué hacer en este caso.
+                    </>
+                  )}
+                </div>
+              )}
+              {Object.keys(heard).length > 0 && (
+                <button onClick={() => setHeard({})} className="mt-3 text-xs underline" style={{ color: "#6060a0" }}>
+                  Reiniciar prueba
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-3 items-center mb-4">
         {status === "idle" || status === "finished" ? (
