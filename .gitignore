@@ -17,3 +17,6 @@ Thumbs.db
 
 # Audio test files
 *.wav
+
+# Fuentes de música (descargas grandes)
+music-source/
