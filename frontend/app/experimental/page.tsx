@@ -43,6 +43,7 @@ export default function ExperimentalPage() {
   const [error, setError] = useState("");
   const [testOpen, setTestOpen] = useState(false);
   const [heard, setHeard] = useState<Record<number, boolean>>({});
+  const [testLevel, setTestLevel] = useState(0.5);
   const player = useRef<MmidstPlayer | null>(null);
   const tester = useRef<ToneTester | null>(null);
 
@@ -61,7 +62,7 @@ export default function ExperimentalPage() {
 
   const playTestTone = (i: number) => {
     if (!tester.current) tester.current = new ToneTester();
-    tester.current.play(freqs[i], volume, ratioDb).catch(() => setError("No se pudo reproducir el tono de prueba"));
+    tester.current.play(freqs[i], testLevel).catch(() => setError("No se pudo reproducir el tono de prueba"));
   };
 
   useEffect(() => {
@@ -300,10 +301,16 @@ export default function ExperimentalPage() {
           )}
           {testOpen && !running && (
             <div className="mt-4">
-              <p className="text-xs mb-4" style={{ color: "#6060a0" }}>
-                Cada tono suena 3 veces seguidas, con el volumen y la mezcla que tienes configurados arriba. Empieza con el volumen bajo y súbelo despacio, sin llegar a
-                un nivel incómodo.
+              <p className="text-xs mb-3" style={{ color: "#6060a0" }}>
+                Cada tono suena 3 veces seguidas, sin música. Tiene su propio nivel, independiente del volumen de la sesión. Empieza con el volumen de tu equipo bajo y
+                sube el nivel despacio, sin llegar a un nivel incómodo.
               </p>
+              <div className="flex items-center gap-3 mb-4">
+                <span className="text-xs" style={{ color: "#a0a0c0" }}>
+                  Nivel de la prueba
+                </span>
+                <input type="range" min={0.1} max={1} step={0.05} value={testLevel} onChange={(e) => setTestLevel(Number(e.target.value))} className="flex-1" />
+              </div>
               <div className="space-y-2">
                 {freqs.map((f, i) => (
                   <div key={i} className="flex flex-wrap items-center gap-2">
@@ -351,7 +358,7 @@ export default function ExperimentalPage() {
                       <strong style={{ color: "#ff6b9d" }}>
                         No oyes: {freqs.filter((_, i) => heard[i] === false).map((f) => `${Math.round(f)} Hz`).join(", ")}.
                       </strong>{" "}
-                      Prueba subir un poco &quot;Tonos frente a música&quot; o el volumen y repite, sin llegar a un nivel incómodo. Si no se oye a un nivel cómodo, ese tono
+                      Prueba subir un poco el nivel de la prueba y repite, sin llegar a un nivel incómodo. Si no se oye a un nivel cómodo, ese tono
                       probablemente cae en una zona con pérdida auditiva o fuera de la respuesta de tus audífonos. Prueba con otros audífonos y consulta con un audiólogo:
                       el estudio no indica qué hacer en este caso.
                     </>

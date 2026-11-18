@@ -21,6 +21,7 @@ const OFF_SEQUENCES = 2;
 const CYCLE_S = (ON_SEQUENCES + OFF_SEQUENCES) * SEQ_S;
 const REF_RMS_DB = -26;
 const LOOKAHEAD_S = 4;
+const TEST_MAX_AMP = 0.3;
 
 export function mmidstFrequencies(ft: number): number[] {
   const r = 2 ** (2 / 3);
@@ -83,19 +84,16 @@ export class ToneTester {
   private rise = rampCurve(true);
   private fall = rampCurve(false);
 
-  async play(freq: number, volume: number, ratioDb: number) {
+  async play(freq: number, level: number) {
     if (!this.ctx) this.ctx = newContext();
     const ctx = this.ctx;
     await ctx.resume();
     const master = ctx.createGain();
-    master.gain.value = volume * volume;
+    master.gain.value = TEST_MAX_AMP * level * level;
     master.connect(ctx.destination);
-    const bus = ctx.createGain();
-    bus.gain.value = toneAmplitude(ratioDb);
-    bus.connect(master);
     const t0 = ctx.currentTime + 0.05;
     for (let i = 0; i < 3; i++) {
-      scheduleToneNode(ctx, bus, freq, t0 + i * 0.5, this.rise, this.fall);
+      scheduleToneNode(ctx, master, freq, t0 + i * 0.5, this.rise, this.fall);
     }
   }
 
